@@ -14,6 +14,7 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 class ProductsController extends AbstractController
 {
@@ -43,9 +44,13 @@ class ProductsController extends AbstractController
         return new JsonResponse(null, Response::HTTP_NO_CONTENT);
     }
     #[Route('/api/products', name: 'addProduct', methods: ['POST'])]
-    public function addProduct(EntityManagerInterface $entityManagerInterface, Request $request, SerializerInterface $serializerInterface, UrlGeneratorInterface $urlGeneratorInterface): JsonResponse
+    public function addProduct(EntityManagerInterface $entityManagerInterface, Request $request, SerializerInterface $serializerInterface, UrlGeneratorInterface $urlGeneratorInterface, ValidatorInterface $validator): JsonResponse
     {
         $product = $serializerInterface->deserialize($request->getContent(), Products::class, 'json');
+        $errors = $validator->validate($product);
+        if ($errors->count() > 0) {
+            return new JsonResponse($serializerInterface->serialize($errors,'json'), Response::HTTP_BAD_REQUEST, [], true);
+        }
         $entityManagerInterface->persist($product);
         $entityManagerInterface->flush();
         $jsonProduct = $serializerInterface->serialize($product, 'json');

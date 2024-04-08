@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Entity;
+use Symfony\Component\Validator\Constraints as Assert;
 
 use App\Repository\ProductsRepository;
 use Doctrine\ORM\Mapping as ORM;
@@ -14,9 +15,11 @@ class Products
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
+    #[Assert\NotBlank(message: 'le nom est requis')]
     private ?string $name = null;
 
     #[ORM\Column]
+    #[Assert\NotBlank(message: 'le prix est requis')]
     private ?float $price = null;
 
     public function getId(): ?int
