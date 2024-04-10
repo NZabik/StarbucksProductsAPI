@@ -10,11 +10,12 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Serializer\SerializerInterface;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 class ProductsController extends AbstractController
 {
@@ -37,6 +38,7 @@ class ProductsController extends AbstractController
         }
     }
     #[Route('/api/products/{id}', name: 'deleteProduct', methods: ['DELETE'])]
+    #[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour supprimer un produit')]
     public function deleteProduct(Products $product, EntityManagerInterface $entityManagerInterface): JsonResponse
     {
         $entityManagerInterface->remove($product);
@@ -44,6 +46,7 @@ class ProductsController extends AbstractController
         return new JsonResponse(null, Response::HTTP_NO_CONTENT);
     }
     #[Route('/api/products', name: 'addProduct', methods: ['POST'])]
+    #[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour ajouter un produit')]
     public function addProduct(EntityManagerInterface $entityManagerInterface, Request $request, SerializerInterface $serializerInterface, UrlGeneratorInterface $urlGeneratorInterface, ValidatorInterface $validator): JsonResponse
     {
         $product = $serializerInterface->deserialize($request->getContent(), Products::class, 'json');
@@ -58,6 +61,7 @@ class ProductsController extends AbstractController
         return new JsonResponse($jsonProduct, Response::HTTP_CREATED, ['Location' => $location], true);
     }
     #[Route('/api/products/{id}', name: 'updateProduct', methods: ['PUT'])]
+    #[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour modifier un produit')]
     public function updateProduct(Products $product, EntityManagerInterface $entityManagerInterface, Request $request, SerializerInterface $serializerInterface): JsonResponse
     {
         $product = $serializerInterface->deserialize($request->getContent(), Products::class, 'json', [AbstractNormalizer::OBJECT_TO_POPULATE => $product]);
