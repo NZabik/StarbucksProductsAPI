@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\Products;
 use App\Repository\ProductsRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -16,14 +17,22 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Contracts\Cache\TagAwareCacheInterface;
 
 class ProductsController extends AbstractController
 {
     #[Route('/api/products', name: 'products', methods: ['GET'])]
-    public function getProducts(ProductsRepository $productsRepository, SerializerInterface $serializerInterface): JsonResponse
+    public function getProducts(ProductsRepository $productsRepository, SerializerInterface $serializerInterface, Request $request, TagAwareCacheInterface $cache): JsonResponse
     {
-        $products = $productsRepository->findAll();
-        $jsonProducts = $serializerInterface->serialize($products, 'json');
+        $page = $request->get('page', 1);
+        $limit = $request->get('limit', 3);
+        $idCache = "getProducts-" . $page . "-" . $limit;
+
+        $jsonProducts = $cache->get($idCache, function (ItemInterface $item) use ($productsRepository, $page, $limit, $serializerInterface) {
+            $item->tag("productsCache");
+            $products = $productsRepository->findAllWithPagination($page, $limit);
+            return $serializerInterface->serialize($products, 'json');
+        });
         return new JsonResponse($jsonProducts, Response::HTTP_OK, [], true);
     }
     #[Route('/api/products/{id}', name: 'productDetail', methods: ['GET'])]
