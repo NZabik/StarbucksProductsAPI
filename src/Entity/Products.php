@@ -5,7 +5,8 @@ use Symfony\Component\Validator\Constraints as Assert;
 use Hateoas\Configuration\Annotation as Hateoas;
 use App\Repository\ProductsRepository;
 use Doctrine\ORM\Mapping as ORM;
-
+use JMS\Serializer\Annotation\Groups;
+use JMS\Serializer\Annotation\Since;
 /**
 * @Hateoas\Relation(
 *      "self",
@@ -13,6 +14,7 @@ use Doctrine\ORM\Mapping as ORM;
 *          "productDetail",
 *          parameters = { "id" = "expr(object.getId())" },
 *      ),
+*      exclusion = @Hateoas\Exclusion(groups="getProducts")
 * )
 *
 * @Hateoas\Relation(
@@ -21,7 +23,7 @@ use Doctrine\ORM\Mapping as ORM;
 *          "deleteProduct",
 *          parameters = { "id" = "expr(object.getId())" },
 *      ),
-*      exclusion = @Hateoas\Exclusion(excludeIf = "expr(not is_granted('ROLE_ADMIN'))"),
+*      exclusion = @Hateoas\Exclusion(groups="getProducts", excludeIf = "expr(not is_granted('ROLE_ADMIN'))"),
 * )
 *
 * @Hateoas\Relation(
@@ -30,7 +32,7 @@ use Doctrine\ORM\Mapping as ORM;
 *          "updateProduct",
 *          parameters = { "id" = "expr(object.getId())" },
 *      ),
-*      exclusion = @Hateoas\Exclusion(excludeIf = "expr(not is_granted('ROLE_ADMIN'))"),
+*      exclusion = @Hateoas\Exclusion(groups="getProducts", excludeIf = "expr(not is_granted('ROLE_ADMIN'))"),
 * )
 *
 */
@@ -40,14 +42,18 @@ class Products
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(["getProducts"])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
     #[Assert\NotBlank(message: 'le nom est requis')]
+    #[Groups(["getProducts"])]
     private ?string $name = null;
 
     #[ORM\Column]
     #[Assert\NotBlank(message: 'le prix est requis')]
+    #[Groups(["getProducts"])]
+    #[Since("2.0")]
     private ?float $price = null;
 
     public function getId(): ?int

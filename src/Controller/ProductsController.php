@@ -14,6 +14,7 @@ use JMS\Serializer\Serializer;
 use JMS\Serializer\SerializationContext;
 use JMS\Serializer\SerializerInterface;
 use JMS\Serializer\Annotation\Groups;
+use App\Service\VersioningService;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
@@ -25,30 +26,31 @@ use Symfony\Contracts\Cache\TagAwareCacheInterface;
 class ProductsController extends AbstractController
 {
     #[Route('/api/products', name: 'products', methods: ['GET'])]
-    public function getProducts(ProductsRepository $productsRepository, SerializerInterface $serializerInterface, Request $request, TagAwareCacheInterface $cache): JsonResponse
+    public function getProducts(ProductsRepository $productsRepository, SerializerInterface $serializerInterface, Request $request, TagAwareCacheInterface $cache, VersioningService $versioningService): JsonResponse
     {
         $page = $request->get('page', 1);
         $limit = $request->get('limit', 3);
         $idCache = "getProducts-" . $page . "-" . $limit;
 
-        $jsonProducts = $cache->get($idCache, function (ItemInterface $item) use ($productsRepository, $page, $limit, $serializerInterface) {
+        $jsonProducts = $cache->get($idCache, function (ItemInterface $item) use ($productsRepository, $page, $limit, $serializerInterface, $versioningService) {
+            $version = $versioningService->getVersion();
+            $context = SerializationContext::create()->setGroups(['getProducts']);
+            $context->setVersion($version);
             $item->tag("productsCache");
             $item->expiresAfter(60);
             $products = $productsRepository->findAllWithPagination($page, $limit);
-            return $serializerInterface->serialize($products, 'json');
+            return $serializerInterface->serialize($products, 'json', $context);
         });
         return new JsonResponse($jsonProducts, Response::HTTP_OK, [], true);
     }
     #[Route('/api/products/{id}', name: 'productDetail', methods: ['GET'])]
-    public function getProductDetail(int $id, ProductsRepository $productsRepository, SerializerInterface $serializerInterface): JsonResponse
+    public function getProductDetail(Products $product, SerializerInterface $serializerInterface, VersioningService $versioningService): JsonResponse
     {
-        $product = $productsRepository->find($id);
-        if ($product) {
-            $jsonProduct = $serializerInterface->serialize($product, 'json');
-            return new JsonResponse($jsonProduct, Response::HTTP_OK, [], true);
-        } else {
-            throw new NotFoundHttpException('Produit non trouvé');
-        }
+        $version = $versioningService->getVersion();
+        $context = SerializationContext::create()->setGroups(['getProducts']);
+        $context->setVersion($version);
+        $jsonBook = $serializerInterface->serialize($product, 'json', $context);
+        return new JsonResponse($jsonBook, Response::HTTP_OK, ['accept' => 'json'], true);
     }
     #[Route('/api/products/{id}', name: 'deleteProduct', methods: ['DELETE'])]
     #[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour supprimer un produit')]
@@ -70,7 +72,8 @@ class ProductsController extends AbstractController
         }
         $entityManagerInterface->persist($product);
         $entityManagerInterface->flush();
-        $jsonProduct = $serializerInterface->serialize($product, 'json');
+        $context = SerializationContext::create()->setGroups(['getProducts']);
+        $jsonProduct = $serializerInterface->serialize($product, 'json', $context);
         $location = $urlGeneratorInterface->generate('productDetail', ['id' => $product->getId()], UrlGeneratorInterface::ABSOLUTE_URL);
         return new JsonResponse($jsonProduct, Response::HTTP_CREATED, ['Location' => $location], true);
     }
