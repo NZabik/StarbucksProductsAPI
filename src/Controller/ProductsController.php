@@ -30,6 +30,7 @@ class ProductsController extends AbstractController
 
         $jsonProducts = $cache->get($idCache, function (ItemInterface $item) use ($productsRepository, $page, $limit, $serializerInterface) {
             $item->tag("productsCache");
+            $item->expiresAfter(60);
             $products = $productsRepository->findAllWithPagination($page, $limit);
             return $serializerInterface->serialize($products, 'json');
         });
@@ -48,8 +49,9 @@ class ProductsController extends AbstractController
     }
     #[Route('/api/products/{id}', name: 'deleteProduct', methods: ['DELETE'])]
     #[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour supprimer un produit')]
-    public function deleteProduct(Products $product, EntityManagerInterface $entityManagerInterface): JsonResponse
+    public function deleteProduct(Products $product, EntityManagerInterface $entityManagerInterface, TagAwareCacheInterface $cache): JsonResponse
     {
+        $cache->invalidateTags(["productsCache"]);
         $entityManagerInterface->remove($product);
         $entityManagerInterface->flush();
         return new JsonResponse(null, Response::HTTP_NO_CONTENT);
