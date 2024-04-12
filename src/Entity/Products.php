@@ -2,10 +2,38 @@
 
 namespace App\Entity;
 use Symfony\Component\Validator\Constraints as Assert;
-
+use Hateoas\Configuration\Annotation as Hateoas;
 use App\Repository\ProductsRepository;
 use Doctrine\ORM\Mapping as ORM;
 
+/**
+* @Hateoas\Relation(
+*      "self",
+*      href = @Hateoas\Route(
+*          "productDetail",
+*          parameters = { "id" = "expr(object.getId())" },
+*      ),
+* )
+*
+* @Hateoas\Relation(
+*      "delete",
+*      href = @Hateoas\Route(
+*          "deleteProduct",
+*          parameters = { "id" = "expr(object.getId())" },
+*      ),
+*      exclusion = @Hateoas\Exclusion(excludeIf = "expr(not is_granted('ROLE_ADMIN'))"),
+* )
+*
+* @Hateoas\Relation(
+*      "update",
+*      href = @Hateoas\Route(
+*          "updateProduct",
+*          parameters = { "id" = "expr(object.getId())" },
+*      ),
+*      exclusion = @Hateoas\Exclusion(excludeIf = "expr(not is_granted('ROLE_ADMIN'))"),
+* )
+*
+*/
 #[ORM\Entity(repositoryClass: ProductsRepository::class)]
 class Products
 {
