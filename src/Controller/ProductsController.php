@@ -22,9 +22,43 @@ use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Contracts\Cache\TagAwareCacheInterface;
+use Nelmio\ApiDocBundle\Annotation\Model;
+use Nelmio\ApiDocBundle\Annotation\Security;
+use OpenApi\Annotations as OA;
 
 class ProductsController extends AbstractController
 {
+    /**
+    * Cette méthode permet de récupérer l'ensemble des produits.
+    *
+    * @OA\Response(
+    *     response=200,
+    *     description="Retourne la liste des produits",
+    *     @OA\JsonContent(
+    *        type="array",
+    *        @OA\Items(ref=@Model(type=Products::class,groups={"getProducts"}))
+    *     )
+    * )
+    * @OA\Parameter(
+    *     name="page",
+    *     in="query",
+    *     description="La page que l'on veut récupérer",
+    *     @OA\Schema(type="int")
+    * )
+    *
+    * @OA\Parameter(
+    *     name="limit",
+    *     in="query",
+    *     description="Le nombre d'éléments que l'on veut récupérer",
+    *     @OA\Schema(type="int")
+    * )
+    * @OA\Tag(name="Products")
+    *
+    * @param ProductsRepository $ProductsRepository
+    * @param SerializerInterface $serializerInterface
+    * @param Request $request
+    * @return JsonResponse
+    */
     #[Route('/api/products', name: 'products', methods: ['GET'])]
     public function getProducts(ProductsRepository $productsRepository, SerializerInterface $serializerInterface, Request $request, TagAwareCacheInterface $cache, VersioningService $versioningService): JsonResponse
     {
@@ -43,15 +77,50 @@ class ProductsController extends AbstractController
         });
         return new JsonResponse($jsonProducts, Response::HTTP_OK, [], true);
     }
+    /**
+    * Cette méthode permet de rechercher un produit par son ID.
+    *
+    * @OA\Response(
+    *     response=200,
+    *     description="Retourne un produit",
+    *     @OA\JsonContent(
+    *        type="array",
+    *        @OA\Items(ref=@Model(type=Products::class,groups={"getProducts"}))
+    *     )
+    * )
+    * 
+    * @OA\Tag(name="Products")
+    *
+    * @param Products $products
+    * @param SerializerInterface $serializerInterface
+    * @return JsonResponse
+    */
     #[Route('/api/products/{id}', name: 'productDetail', methods: ['GET'])]
     public function getProductDetail(Products $product, SerializerInterface $serializerInterface, VersioningService $versioningService): JsonResponse
     {
         $version = $versioningService->getVersion();
         $context = SerializationContext::create()->setGroups(['getProducts']);
         $context->setVersion($version);
-        $jsonBook = $serializerInterface->serialize($product, 'json', $context);
-        return new JsonResponse($jsonBook, Response::HTTP_OK, ['accept' => 'json'], true);
+        $jsonProducts = $serializerInterface->serialize($product, 'json', $context);
+        return new JsonResponse($jsonProducts, Response::HTTP_OK, ['accept' => 'json'], true);
     }
+    /**
+    * Cette méthode permet de supprimer un produit par son ID.
+    *
+    * @OA\Response(
+    *     response=200,
+    *     description="Supprime un produit",
+    *     @OA\JsonContent(
+    *        type="array",
+    *        @OA\Items(ref=@Model(type=Products::class,groups={"getProducts"}))
+    *     )
+    * )
+    * 
+    * @OA\Tag(name="Products")
+    *
+    * @param Products $products
+    * @return JsonResponse
+    */
     #[Route('/api/products/{id}', name: 'deleteProduct', methods: ['DELETE'])]
     #[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour supprimer un produit')]
     public function deleteProduct(Products $product, EntityManagerInterface $entityManagerInterface, TagAwareCacheInterface $cache): JsonResponse
@@ -61,6 +130,37 @@ class ProductsController extends AbstractController
         $entityManagerInterface->flush();
         return new JsonResponse(null, Response::HTTP_NO_CONTENT);
     }
+    /**
+    * Cette méthode permet de créer un produit.
+    *
+    * @OA\Response(
+    *     response=200,
+    *     description="Crée un produit",
+    *     @OA\JsonContent(
+    *        type="array",
+    *        @OA\Items(ref=@Model(type=Products::class,groups={"getProducts"}))
+    *     )
+    * )
+    *
+    *  @OA\RequestBody(
+    *     required=true,
+    *     @OA\JsonContent(
+    *         example={
+    *             "name": "name",
+    *             "price": 1.99,
+    *         },
+    *           type="array",
+    *           @OA\Items(ref=@Model(type=Products::class,groups={"getProducts"})),
+    *     )
+    * )
+    * @OA\Tag(name="Products")
+    *
+    * @param SerializerInterface $serializerInterface
+    * @param EntityManagerInterface $entityManagerInterface
+    * @param UrlGeneratorInterface $urlGenerator
+    * @param Request $request
+    * @return JsonResponse
+    */
     #[Route('/api/products', name: 'addProduct', methods: ['POST'])]
     #[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour ajouter un produit')]
     public function addProduct(EntityManagerInterface $entityManagerInterface, Request $request, SerializerInterface $serializerInterface, UrlGeneratorInterface $urlGeneratorInterface, ValidatorInterface $validator): JsonResponse
@@ -77,6 +177,37 @@ class ProductsController extends AbstractController
         $location = $urlGeneratorInterface->generate('productDetail', ['id' => $product->getId()], UrlGeneratorInterface::ABSOLUTE_URL);
         return new JsonResponse($jsonProduct, Response::HTTP_CREATED, ['Location' => $location], true);
     }
+    /**
+    * Cette méthode permet de modifier un produit.
+    *
+    * @OA\Response(
+    *     response=200,
+    *     description="Modifie un produit",
+    *     @OA\JsonContent(
+    *        type="array",
+    *        @OA\Items(ref=@Model(type=Products::class,groups={"getProducts"}))
+    *     )
+    * )
+    *
+    *  @OA\RequestBody(
+    *     required=true,
+    *     @OA\JsonContent(
+    *         example={
+    *             "name": "name",
+    *             "price": 1.99,
+    *         },
+    *           type="array",
+    *           @OA\Items(ref=@Model(type=Products::class,groups={"getProducts"})),
+    *     )
+    * )
+    * @OA\Tag(name="Products")
+    *
+    * @param SerializerInterface $serializerInterface
+    * @param EntityManagerInterface $entityManagerInterface
+    * @param UrlGeneratorInterface $urlGenerator
+    * @param Request $request
+    * @return JsonResponse
+    */
     #[Route('/api/products/{id}', name: 'updateProduct', methods: ['PUT'])]
     #[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour modifier un produit')]
     public function updateProduct(Products $currentProduct, EntityManagerInterface $entityManagerInterface, Request $request, SerializerInterface $serializerInterface, TagAwareCacheInterface $cache, ValidatorInterface $validator): JsonResponse
