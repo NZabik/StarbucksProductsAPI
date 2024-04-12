@@ -10,7 +10,10 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Component\Serializer\SerializerInterface;
+use JMS\Serializer\Serializer;
+use JMS\Serializer\SerializationContext;
+use JMS\Serializer\SerializerInterface;
+use JMS\Serializer\Annotation\Groups;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
@@ -73,10 +76,21 @@ class ProductsController extends AbstractController
     }
     #[Route('/api/products/{id}', name: 'updateProduct', methods: ['PUT'])]
     #[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour modifier un produit')]
-    public function updateProduct(Products $product, EntityManagerInterface $entityManagerInterface, Request $request, SerializerInterface $serializerInterface): JsonResponse
+    public function updateProduct(Products $currentProduct, EntityManagerInterface $entityManagerInterface, Request $request, SerializerInterface $serializerInterface, TagAwareCacheInterface $cache, ValidatorInterface $validator): JsonResponse
     {
-        $product = $serializerInterface->deserialize($request->getContent(), Products::class, 'json', [AbstractNormalizer::OBJECT_TO_POPULATE => $product]);
+        $product = $serializerInterface->deserialize($request->getContent(), Products::class, 'json');
+        $currentProduct->setName($product->getName());
+        $currentProduct->setPrice($product->getPrice());
+
+        $errors = $validator->validate($currentProduct);
+        if ($errors->count() > 0) {
+            return new JsonResponse($serializerInterface->serialize($errors,'json'), JsonResponse::HTTP_BAD_REQUEST, [], true);
+        }
+        $entityManagerInterface->persist($currentProduct);
         $entityManagerInterface->flush();
+
+        $cache->invalidateTags(["productsCache"]);
+        
         return new JsonResponse(null, Response::HTTP_NO_CONTENT);
     }
     
