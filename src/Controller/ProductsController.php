@@ -63,7 +63,7 @@ class ProductsController extends AbstractController
     public function getProducts(ProductsRepository $productsRepository, SerializerInterface $serializerInterface, Request $request, TagAwareCacheInterface $cache, VersioningService $versioningService): JsonResponse
     {
         $page = $request->get('page', 1);
-        $limit = $request->get('limit', 6);
+        $limit = $request->get('limit');
         $idCache = "getProducts-" . $page . "-" . $limit;
 
         $jsonProducts = $cache->get($idCache, function (ItemInterface $item) use ($productsRepository, $page, $limit, $serializerInterface, $versioningService) {
